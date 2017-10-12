@@ -78,6 +78,7 @@ impl Operand {
 #[derive(Debug, Clone, PartialEq)]
 pub enum Type {
     Mut(Option<Rc<Type>>),
+    Array(Rc<Type>, Option<Expression>),
     I08,
     I16,
     I32,

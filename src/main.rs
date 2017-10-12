@@ -3,8 +3,8 @@ use foon::*;
 
 fn main() {
     let test = r#"
-i32:
-  a = 10
+[i32; 1]:
+  a = 1
 
 foo = 0
 

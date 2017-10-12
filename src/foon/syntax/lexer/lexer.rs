@@ -19,6 +19,7 @@ pub fn lexer(data: &mut Chars) -> Lexer {
         "]",
         ",",
         ":",
+        ";",
         "{",
         "}",
         "!",

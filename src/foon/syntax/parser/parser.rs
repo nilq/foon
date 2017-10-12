@@ -58,18 +58,50 @@ impl Parser {
         Ok(expr)
     }
     
+    fn array_type(&mut self) -> ParserResult<Type> {
+        self.traveler.next();
+        
+        let t = Rc::new(Type::from_str(&self.traveler.expect(TokenType::Type)?).unwrap_or(Type::Any));
+        self.traveler.next();
+
+        if self.traveler.current_content() == ";" {
+            self.traveler.next();
+
+            let len = self.term()?;
+
+            self.traveler.expect_content("]")?;
+            self.traveler.next();
+            
+            Ok(Type::Array(t, Some(len)))
+        } else {
+            self.traveler.expect_content("]")?;
+            self.traveler.next();
+
+            Ok(Type::Array(t, None))
+        }
+    }
+    
     pub fn try_type(&mut self) -> ParserResult<Type> {
         if self.traveler.current_content() == "mut" {
             self.traveler.next();
-            if let Some(t) = Type::from_str(&self.traveler.current_content()) {
+
+            let t: Option<Rc<Type>>;
+            if self.traveler.current_content() == "[" {
+                t = Some(Rc::new(self.array_type()?));
+            } else if let Some(tt) = Type::from_str(&self.traveler.current_content()) {
                 self.traveler.next();
-                Ok(Type::Mut(Some(Rc::new(t))))
+                t = Some(Rc::new(tt));
             } else {
-                Ok(Type::Mut(None))
+                t = None;
             }
+            
+            Ok(Type::Mut(t))
+
         } else if let Some(t) = Type::from_str(&self.traveler.current_content()) {
             self.traveler.next();
             Ok(t)
+        } else if self.traveler.current_content() == "[" {
+            Ok(self.array_type()?)
         } else {
             Err(ParserError::new_pos(self.traveler.current().position, &format!("expected type: {}", self.traveler.current_content())))
         }
@@ -184,6 +216,62 @@ impl Parser {
             )
         )
     }
+    
+    fn definition(&mut self) -> ParserResult<Statement> {
+        let t = self.try_type()?;
+        
+        self.traveler.expect_content(":")?;
+        self.traveler.next();
+
+        let mut names = Vec::new();
+
+        if self.traveler.current_content() == "\n" {
+            self.traveler.next();
+
+            loop {
+                if self.traveler.current().token_type == TokenType::Indent {
+                    self.traveler.next();
+                    if self.traveler.current_content() == "\n" {
+                        self.traveler.next();
+                        break
+                    }
+                } else if self.traveler.current_content() == "\n" {
+                    self.traveler.next();
+
+                    if self.traveler.current().token_type == TokenType::Indent {
+                        self.traveler.next();
+                    } else {
+                        break
+                    }
+                }
+
+                if self.traveler.current_content() == "=" {
+                    break
+                }
+
+                if self.traveler.remaining() < 2 {
+                    break
+                }
+
+                names.push(Rc::new(Expression::Identifier(Rc::new(self.traveler.expect(TokenType::Identifier)?))));
+                self.traveler.next();
+            }
+        } else {
+            names.push(Rc::new(Expression::Identifier(Rc::new(self.traveler.expect(TokenType::Identifier)?))));
+            self.traveler.next();
+        }
+        
+        if self.traveler.current_content() == "=" {
+            self.traveler.next();
+
+            let right = Some(Rc::new(self.expression()?));
+
+            Ok(Statement::Definition(Definition { t, names, right }))
+            
+        } else {
+            Ok(Statement::Definition(Definition { t, names, right: None }))
+        }
+    }
 
     fn statement(&mut self) -> ParserResult<Statement> {
         self.skip_whitespace()?;
@@ -193,6 +281,7 @@ impl Parser {
                     self.traveler.next();
                     self.statement()
                 },
+                "[" => self.definition(),
                 _ => Ok(Statement::Expression(Rc::new(self.expression()?))),
             },
             TokenType::Identifier => {
@@ -206,61 +295,7 @@ impl Parser {
                     Ok(Statement::Expression(Rc::new(self.expression()?)))
                 }
             },
-            TokenType::Type => {
-                let t = self.try_type()?;
-                
-                self.traveler.expect_content(":")?;
-                self.traveler.next();
-
-                let mut names = Vec::new();
-
-                if self.traveler.current_content() == "\n" {
-                    self.traveler.next();
-
-                    loop {
-                        if self.traveler.current().token_type == TokenType::Indent {
-                            self.traveler.next();
-                            if self.traveler.current_content() == "\n" {
-                                self.traveler.next();
-                                break
-                            }
-                        } else if self.traveler.current_content() == "\n" {
-                            self.traveler.next();
-
-                            if self.traveler.current().token_type == TokenType::Indent {
-                                self.traveler.next();
-                            } else {
-                                break
-                            }
-                        }
-
-                        if self.traveler.current_content() == "=" {
-                            break
-                        }
-
-                        if self.traveler.remaining() < 2 {
-                            break
-                        }
-
-                        names.push(Rc::new(Expression::Identifier(Rc::new(self.traveler.expect(TokenType::Identifier)?))));
-                        self.traveler.next();
-                    }
-                } else {
-                    names.push(Rc::new(Expression::Identifier(Rc::new(self.traveler.expect(TokenType::Identifier)?))));
-                    self.traveler.next();
-                }
-                
-                if self.traveler.current_content() == "=" {
-                    self.traveler.next();
-
-                    let right = Some(Rc::new(self.expression()?));
-
-                    Ok(Statement::Definition(Definition { t, names, right }))
-                    
-                } else {
-                    Ok(Statement::Definition(Definition { t, names, right: None }))
-                }
-            },
+            TokenType::Type => self.definition(),
             _ => Ok(Statement::Expression(Rc::new(self.expression()?))),
         }
     }
