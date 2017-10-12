@@ -19,10 +19,24 @@ pub struct Operation {
     pub right: Rc<Expression>,
 }
 
-
 #[derive(Debug, Clone, PartialEq)]
 pub enum Statement {
     Expression(Rc<Expression>),
+    Assignment(Assignment),
+    Definition(Definition),
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub struct Assignment {
+    pub left:  Rc<Expression>,
+    pub right: Rc<Expression>,
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub struct Definition {
+    pub t:     Type,
+    pub left:  Rc<Expression>,
+    pub right: Option<Rc<Expression>>,
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -50,6 +64,62 @@ impl Operand {
             "<="  => Some((Operand::LtEqual, 4)),
             ">="  => Some((Operand::GtEqual, 4)),
             _     => None,
+        }
+    }
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub enum Type {
+    Mut(Option<Rc<Type>>),
+    I08,
+    I16,
+    I32,
+    I64,
+    I128,
+    F32,
+    F64,
+    U08,
+    U16,
+    U32,
+    U64,
+    U128,
+    Char,
+    Str,
+    Bool,
+    Any,
+}
+
+#[allow(unused)]
+impl Type {
+    pub fn compare(&self, other: &Type) -> bool {
+        if self == &Type::Any || other == &Type::Any {
+            true
+        } else {
+            self == other
+        }
+    }
+}
+
+impl Type {
+    pub fn from_str(v: &str) -> Option<Type> {
+        match v {
+            "i08"  => Some(Type::I08),
+            "i32"  => Some(Type::I32),
+            "i16"  => Some(Type::I16),
+            "i64"  => Some(Type::I64),
+            "i128" => Some(Type::I128),
+            "f32"  => Some(Type::F32),
+            "f64"  => Some(Type::F64),
+            "u08"  => Some(Type::U08),
+            "u16"  => Some(Type::U16),
+            "u32"  => Some(Type::U32),
+            "u64"  => Some(Type::U64),
+            "u128" => Some(Type::U128),
+            "char" => Some(Type::Char),
+            "str"  => Some(Type::Str),
+            "bool" => Some(Type::Bool),
+            "any"  => Some(Type::Any),
+            _      => None,
         }
     }
 }

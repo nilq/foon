@@ -51,17 +51,21 @@ pub fn lexer(data: &mut Chars) -> Lexer {
         "i08",
         "i32",
         "i64",
+        "i128",
         "f32",
         "f64",
         "u08",
         "u16",
+        "u32",
+        "u64",
+        "u128",
         "char",
         "str",
-        "bool",    
+        "bool",
+        "mut",
     ].iter().map(|&x| x.to_string()).collect();
 
     let keywords = vec![
-        "mut",
         "if",
         "elif",
         "else",
