@@ -34,9 +34,9 @@ pub struct Assignment {
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct Definition {
-    pub t:     Type,
-    pub left:  Rc<Expression>,
-    pub right: Option<Rc<Expression>>,
+    pub t:      Type,
+    pub names:  Vec<Rc<Expression>>,
+    pub right:  Option<Rc<Expression>>,
 }
 
 #[derive(Debug, Clone, PartialEq)]
