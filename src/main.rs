@@ -4,11 +4,11 @@ use foon::*;
 fn main() {
     let test = r#"
 i32:
-  a
-  b
-  c = 10
-  
-i128: foo = 123
+  a = 10
+
+foo = 0
+
+(foo) 1, 2
     "#;
 
     let lexer = lexer(&mut test.chars());

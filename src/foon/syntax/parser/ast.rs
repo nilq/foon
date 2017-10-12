@@ -9,6 +9,7 @@ pub enum Expression {
     Char(char),
     Identifier(Rc<String>),
     Operation(Operation),
+    Call(Call),
     EOF,
 }
 
@@ -17,6 +18,12 @@ pub struct Operation {
     pub left:  Rc<Expression>,
     pub op:    Operand,
     pub right: Rc<Expression>,
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub struct Call {
+    pub callee: Rc<Expression>,
+    pub args:   Vec<Rc<Expression>>,
 }
 
 #[derive(Debug, Clone, PartialEq)]

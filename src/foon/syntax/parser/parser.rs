@@ -38,7 +38,7 @@ impl Parser {
 
         Ok(())
     }
-    
+
     fn expression(&mut self) -> ParserResult<Expression> {
         self.skip_whitespace()?;
 
@@ -72,6 +72,23 @@ impl Parser {
             Ok(t)
         } else {
             Err(ParserError::new_pos(self.traveler.current().position, &format!("expected type: {}", self.traveler.current_content())))
+        }
+    }
+    
+    fn try_call(&mut self, callee: Expression) -> ParserResult<Expression> {
+        match self.traveler.current().token_type {
+            TokenType::IntLiteral    |
+            TokenType::FloatLiteral  |
+            TokenType::BoolLiteral   |
+            TokenType::StringLiteral |
+            TokenType::CharLiteral   |
+            TokenType::Identifier => self.call(callee),
+            TokenType::Symbol     => match self.traveler.current_content().as_str() {
+                "(" => self.call(callee),
+                _   => Err(ParserError::new_pos(self.traveler.current().position, &format!("unexpected symbol: {}", self.traveler.current_content()))),
+            },
+
+            _ => Ok(callee),
         }
     }
 
@@ -114,10 +131,41 @@ impl Parser {
             }
 
             TokenType::Identifier => {
-                let a = Ok(Expression::Identifier(Rc::new(self.traveler.current_content().clone())));
+                let a = Expression::Identifier(Rc::new(self.traveler.current_content().clone()));
                 self.traveler.next();
-                a
+
+                if self.traveler.remaining() > 1 {
+                    match self.traveler.current_content().as_str() {
+                        "," | ")" => Ok(a),
+                        _         => self.try_call(a),
+                    }
+                } else {
+                    Ok(a)
+                }
             },
+            
+            TokenType::Symbol => match self.traveler.current_content().as_str() {
+                "(" => {
+                    self.traveler.next();
+                    if self.traveler.current_content() == ")" {
+                        return Err(ParserError::new_pos(self.traveler.current().position, &format!("empty clause '()'")))
+                    }
+                    
+                    let a = self.expression()?;
+
+                    self.skip_whitespace()?;
+                    self.traveler.expect_content(")")?;
+                    self.traveler.next();
+
+                    if self.traveler.remaining() > 1 {
+                        self.try_call(a)
+                    } else {
+                        Ok(a)
+                    }
+                }
+                _ => Err(ParserError::new_pos(self.traveler.current().position, &format!("unexpected symbol: {}", self.traveler.current_content()))),
+            },
+            
             _ => Err(ParserError::new_pos(self.traveler.current().position, &format!("unexpected: {}", self.traveler.current_content()))),
         }
     }
@@ -215,6 +263,53 @@ impl Parser {
             },
             _ => Ok(Statement::Expression(Rc::new(self.expression()?))),
         }
+    }
+    
+    fn call(&mut self, caller: Expression) -> ParserResult<Expression> {
+        let mut args = Vec::new();
+
+        let mut acc = 0;
+
+        while self.traveler.current_content() != "\n" {
+            if self.traveler.current_content() == "," {
+                self.traveler.next();
+                
+                let expr = Rc::new(self.expression()?);
+
+                if *expr == Expression::EOF {
+                    break
+                }
+
+                args.push(expr);
+
+            } else if acc == 0 {
+                let expr = Rc::new(self.expression()?);
+                
+                if *expr == Expression::EOF {
+                    break
+                }
+
+                args.push(expr);
+
+            } else {
+                self.traveler.prev();
+                if self.traveler.current_content() != "!" || self.traveler.current_content() != "," {
+                    self.traveler.next();
+                }
+                break
+            }
+            
+            acc += 1
+        }
+        
+        Ok(
+            Expression::Call(
+                Call {
+                    callee: Rc::new(caller),
+                    args,
+                }
+            )
+        )
     }
     
     fn operation(&mut self, expression: Expression) -> ParserResult<Expression> {
