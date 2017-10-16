@@ -71,7 +71,7 @@ impl Parser {
 
             self.traveler.expect_content("]")?;
             self.traveler.next();
-            
+
             Ok(Type::Array(t, Some(len)))
         } else {
             self.traveler.expect_content("]")?;
@@ -123,10 +123,104 @@ impl Parser {
             _ => Ok(callee),
         }
     }
+    
+    fn params(&mut self) -> ParserResult<Vec<(Option<Type>, Rc<String>)>> {
+        self.traveler.expect_content("(")?;
+        self.traveler.next();
+        
+        let mut params = Vec::new();
+        
+        while self.traveler.current_content() != ")" {
+            if self.traveler.current_content() == "," {
+                self.traveler.next();
+            }
+            match self.traveler.current().token_type {
+                TokenType::Type => {
+                    let t = self.try_type()?;
+
+                    self.traveler.expect_content(":")?;
+                    self.traveler.next();
+                    
+                    let id = self.traveler.expect(TokenType::Identifier)?;
+                    self.traveler.next();
+                    
+                    params.push((Some(t), Rc::new(id)))
+                },
+                
+                TokenType::Identifier => {
+                    params.push((None, Rc::new(self.traveler.current_content())));
+                    self.traveler.next();
+                },
+                
+                _ => return Err(ParserError::new_pos(self.traveler.current().position, &format!("expected parameter: {}", self.traveler.current_content()))),
+            }
+        }
+        
+        self.traveler.next();
+        
+        Ok(params)
+    }
+    
+    fn block(&mut self) -> ParserResult<Expression> {
+        let mut stack = Vec::new();
+        loop {
+            if self.traveler.current().token_type == TokenType::Indent {
+                self.traveler.next();
+                if self.traveler.current_content() == "\n" {
+                    self.traveler.next();
+                    break
+                }
+            } else if self.traveler.current_content() == "\n" {
+                stack.push(self.traveler.current().clone());
+                self.traveler.next();
+
+                if self.traveler.current().token_type == TokenType::Indent {
+                    self.traveler.next();
+                } else {
+                    break
+                }
+            }
+            
+            if self.traveler.remaining() < 2 {
+                break
+            }
+
+            stack.push(self.traveler.current().clone());
+            self.traveler.next();
+        }        
+
+        let mut parser = Parser::new(Traveler::new(stack));
+
+        match parser.parse() {
+            Ok(s)    => Ok(Expression::Block(s)),
+            Err(why) => Err(ParserError::new(&format!("{}", why))),
+        }
+    }
+    
+    fn lambda_with_type(&mut self, t: Type) -> ParserResult<Expression> {
+        let t = Rc::new(t);
+        
+        let params = self.params()?;
+        
+        let body = Rc::new(self.expression()?);
+
+        Ok(Expression::Lambda(Lambda {t, params, body}))
+    }
+
+    fn lambda(&mut self) -> ParserResult<Expression> {
+        let t = Rc::new(self.try_type()?);
+
+        self.traveler.expect_content(":")?;
+        self.traveler.next();
+        
+        let params = self.params()?;
+        
+        let body = Rc::new(self.expression()?);
+
+        Ok(Expression::Lambda(Lambda {t, params, body}))
+    }
 
     pub fn term(&mut self) -> ParserResult<Expression> {
-        self.skip_whitespace()?;
-
         if self.traveler.remaining() < 2 {
             return Ok(Expression::EOF)
         }
@@ -198,6 +292,8 @@ impl Parser {
                 _ => Err(ParserError::new_pos(self.traveler.current().position, &format!("unexpected symbol: {}", self.traveler.current_content()))),
             },
             
+            TokenType::Type => self.lambda(),
+            
             _ => Err(ParserError::new_pos(self.traveler.current().position, &format!("unexpected: {}", self.traveler.current_content()))),
         }
     }
@@ -256,6 +352,8 @@ impl Parser {
                 names.push(Rc::new(Expression::Identifier(Rc::new(self.traveler.expect(TokenType::Identifier)?))));
                 self.traveler.next();
             }
+        } else if self.traveler.current_content() == "(" {
+            return Ok(Statement::Expression(Rc::new(self.lambda_with_type(t)?)))
         } else {
             names.push(Rc::new(Expression::Identifier(Rc::new(self.traveler.expect(TokenType::Identifier)?))));
             self.traveler.next();

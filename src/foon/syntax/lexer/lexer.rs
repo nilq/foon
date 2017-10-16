@@ -62,6 +62,7 @@ pub fn lexer(data: &mut Chars) -> Lexer {
         "u128",
         "char",
         "str",
+        "any",
         "bool",
         "mut",
     ].iter().map(|&x| x.to_string()).collect();

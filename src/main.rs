@@ -3,21 +3,12 @@ use foon::*;
 
 fn main() {
     let test = r#"
-[i32; 1]:
-  a = 1
-
-foo = 0
-
-(foo) 1, 2
+i32: (mut i32: a, b) a + b
     "#;
 
     let lexer = lexer(&mut test.chars());
 
-    let l = lexer.collect();
-
-    println!("{:#?}", l);
-
-    let traveler   = Traveler::new(l);
+    let traveler   = Traveler::new(lexer.collect());
     let mut parser = Parser::new(traveler);
 
     match parser.parse() {
