@@ -5,8 +5,11 @@ fn main() {
     let test = r#"
 [i32; 2]: a = {10, 10}
 
-[i32; 2]: b =
+mut [i32; 2]: b =
   10000
+
+b =
+  b - 100
 "#;
 
     let lexer = lexer(&mut test.chars());

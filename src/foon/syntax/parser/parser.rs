@@ -382,7 +382,7 @@ impl Parser {
     fn assignment(&mut self, left: Rc<Expression>) -> ParserResult<Statement> {
         self.traveler.next();
 
-        let right = Rc::new(self.expression()?);
+        let right = Rc::new(self.body_item()?);
 
         Ok(
             Statement::Assignment(
