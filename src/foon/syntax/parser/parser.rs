@@ -160,7 +160,7 @@ impl Parser {
         
         Ok(params)
     }
-    
+
     fn block(&mut self) -> ParserResult<Expression> {
         let mut stack = Vec::new();
         loop {
@@ -180,11 +180,11 @@ impl Parser {
                     break
                 }
             }
-            
+
             if self.traveler.remaining() < 2 {
                 break
             }
-
+            
             stack.push(self.traveler.current().clone());
             self.traveler.next();
         }        
@@ -197,12 +197,20 @@ impl Parser {
         }
     }
     
+    fn body(&mut self) -> ParserResult<Expression> {
+        if self.traveler.current_content() == "\n" {
+            self.block()
+        } else {
+            self.expression()
+        }
+    }
+    
     fn lambda_with_type(&mut self, t: Type) -> ParserResult<Expression> {
         let t = Rc::new(t);
         
         let params = self.params()?;
         
-        let body = Rc::new(self.expression()?);
+        let body = Rc::new(self.body()?);
 
         Ok(Expression::Lambda(Lambda {t, params, body}))
     }
@@ -215,7 +223,7 @@ impl Parser {
         
         let params = self.params()?;
         
-        let body = Rc::new(self.expression()?);
+        let body = Rc::new(self.body()?);
 
         Ok(Expression::Lambda(Lambda {t, params, body}))
     }
