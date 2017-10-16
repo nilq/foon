@@ -13,8 +13,8 @@ i32:
 
 i32: sum ([i32]: nums)
   mut i32: acc = 0
-  for i = 1, len nums
-    acc += nums[i]
+  for i in nums
+    acc += i
 
   acc
   
