@@ -205,6 +205,22 @@ impl Parser {
         }
     }
     
+    fn body_item(&mut self) -> ParserResult<Expression> {
+        if self.traveler.current_content() == "\n" {
+            let a = self.block()?;
+            
+            match a {
+                Expression::Block(ref s) => match *s.get(0).unwrap() {
+                    Statement::Expression(ref e) => Ok((&*e.clone()).clone()),
+                    _ => Err(ParserError::new_pos(self.traveler.current().position, &format!("expected expression .. found statement"))),
+                },
+                _ => unreachable!(),
+            }
+        } else {
+            self.expression()
+        }
+    }
+    
     fn lambda_with_type(&mut self, t: Type) -> ParserResult<Expression> {
         let t = Rc::new(t);
         
@@ -433,7 +449,7 @@ impl Parser {
         if self.traveler.current_content() == "=" {
             self.traveler.next();
 
-            let right = Some(Rc::new(self.expression()?));
+            let right = Some(Rc::new(self.body_item()?));
 
             Ok(Statement::Definition(Definition { t, names, right }))
             
