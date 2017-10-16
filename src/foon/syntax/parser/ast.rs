@@ -11,6 +11,8 @@ pub enum Expression {
     Operation(Operation),
     Call(Call),
     Lambda(Lambda),
+    Array(Vec<Rc<Expression>>),
+    Index(Index),
     EOF,
 }
 
@@ -32,6 +34,12 @@ pub struct Lambda {
     pub t:      Rc<Type>,
     pub params: Vec<(Option<Type>, Rc<String>)>,
     pub body:   Rc<Expression>,
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub struct Index {
+    pub id:    Rc<Expression>,
+    pub index: Rc<Expression>,
 }
 
 #[derive(Debug, Clone, PartialEq)]

@@ -3,8 +3,7 @@ use foon::*;
 
 fn main() {
     let test = r#"
-i32: add (mut i32: a, b)
-  a + b
+[i32; 2]: a = {10, 10}
     "#;
 
     let lexer = lexer(&mut test.chars());

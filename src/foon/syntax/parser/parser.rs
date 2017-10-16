@@ -227,6 +227,59 @@ impl Parser {
 
         Ok(Expression::Lambda(Lambda {t, params, body}))
     }
+    
+    fn index(&mut self, id: Rc<Expression>) -> ParserResult<Expression> {
+        self.traveler.next();
+
+        let index = Rc::new(self.expression()?);
+
+        self.traveler.expect_content("]")?;
+        self.traveler.next();
+        
+        Ok(
+            Expression::Index(
+                Index {
+                    id,
+                    index,
+                }
+            )
+        )
+    }
+    
+    fn array(&mut self) -> ParserResult<Expression> {
+        self.traveler.next();
+        
+        let mut content = Vec::new();
+        
+        let mut acc = 0;
+
+        while self.traveler.current_content() != "}" {
+            if self.traveler.current_content() == "," {
+                self.traveler.next();
+                content.push(Rc::new(self.expression()?));
+
+            } else if acc == 0 {
+                content.push(Rc::new(self.expression()?));
+
+            } else {
+                self.traveler.prev();
+                if self.traveler.current_content() != "," {
+                    self.traveler.next();
+                }
+                break
+            }
+
+            acc += 1
+        }
+
+        self.traveler.next();
+
+        if self.traveler.current_content() == "[" {
+            self.index(Rc::new(Expression::Array(content)))
+        } else {
+            Ok(Expression::Array(content))
+        }
+    }
 
     pub fn term(&mut self) -> ParserResult<Expression> {
         if self.traveler.remaining() < 2 {
@@ -271,6 +324,7 @@ impl Parser {
                 if self.traveler.remaining() > 1 {
                     match self.traveler.current_content().as_str() {
                         "," | ")" => Ok(a),
+                        "["       => self.index(Rc::new(a)),
                         _         => self.try_call(a),
                     }
                 } else {
@@ -291,12 +345,15 @@ impl Parser {
                     self.traveler.expect_content(")")?;
                     self.traveler.next();
 
-                    if self.traveler.remaining() > 1 {
+                    if self.traveler.current_content() == "[" {
+                        self.index(Rc::new(a))
+                    } else if self.traveler.remaining() > 1 {
                         self.try_call(a)
                     } else {
                         Ok(a)
                     }
                 }
+                "{" => self.array(),
                 _ => Err(ParserError::new_pos(self.traveler.current().position, &format!("unexpected symbol: {}", self.traveler.current_content()))),
             },
             
