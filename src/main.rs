@@ -3,7 +3,7 @@ use foon::*;
 
 fn main() {
     let test = r#"
-i32: (mut i32: a, b)
+i32: add (mut i32: a, b)
   a + b
     "#;
 

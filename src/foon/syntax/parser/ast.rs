@@ -39,6 +39,7 @@ pub enum Statement {
     Expression(Rc<Expression>),
     Assignment(Assignment),
     Definition(Definition),
+    Function(Rc<String>, Rc<Expression>), // *lambda expression
 }
 
 #[derive(Debug, Clone, PartialEq)]

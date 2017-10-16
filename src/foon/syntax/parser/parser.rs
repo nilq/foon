@@ -184,7 +184,7 @@ impl Parser {
             if self.traveler.remaining() < 2 {
                 break
             }
-            
+
             stack.push(self.traveler.current().clone());
             self.traveler.next();
         }        
@@ -363,8 +363,14 @@ impl Parser {
         } else if self.traveler.current_content() == "(" {
             return Ok(Statement::Expression(Rc::new(self.lambda_with_type(t)?)))
         } else {
-            names.push(Rc::new(Expression::Identifier(Rc::new(self.traveler.expect(TokenType::Identifier)?))));
+            let a = self.traveler.expect(TokenType::Identifier)?;
             self.traveler.next();
+            
+            if self.traveler.current_content() == "(" {
+                return Ok(Statement::Function(Rc::new(a), Rc::new(self.lambda_with_type(t)?)))
+            } else {
+                names.push(Rc::new(Expression::Identifier(Rc::new(a))));
+            }
         }
         
         if self.traveler.current_content() == "=" {
